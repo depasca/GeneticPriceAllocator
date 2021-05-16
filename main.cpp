@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <random>
 
 using namespace std;
@@ -13,6 +14,9 @@ typedef enum
 
 class Solution
 {
+    vector<int> accountDemand;
+    vector<int> brokerOffer;
+    vector<vector<int>> matrix;
     vector<double> accountPrices;
     vector<double> stats;
     vector<int> assignments;
@@ -50,19 +54,25 @@ class Solution
     }
 
 public:
-    Solution(const vector<int> &sol, int nAccounts, int nBrokers /*, const vector<double> &brokerPrice*/)
+    Solution(const vector<int> &sol, const vector<int> &_accountDemand, const vector<int> &_brokerOffer, const vector<vector<int>> &_matrix /*, const vector<double> &brokerPrice*/)
     {
-        numAccounts = nAccounts;
-        numBrokers = nBrokers;
+        accountDemand = _accountDemand;
+        brokerOffer = _brokerOffer;
+        numBrokers = _brokerOffer.size();
+        numAccounts = accountDemand.size();
+        matrix = _matrix;
         assignments = sol;
         fitnessScore = 0;
         //calculateAccountPrices(brokerPrice);
         //calculateStats();
     }
-    Solution(const vector<int> &assignemnts1, const vector<int> &assignments2, crossover_type cType, int nAccounts, int nBrokers, const vector<double> &brokerPrice)
+    Solution(const vector<int> &assignemnts1, const vector<int> &assignments2, crossover_type cType, const vector<int> &_accountDemand, const vector<int> &_brokerOffer, const vector<vector<int>> &_matrix, const vector<double> &brokerPrice)
     {
-        numAccounts = nAccounts;
-        numBrokers = nBrokers;
+        accountDemand = _accountDemand;
+        brokerOffer = _brokerOffer;
+        numBrokers = _brokerOffer.size();
+        numAccounts = accountDemand.size();
+        matrix = _matrix;
         fitnessScore = 0;
         assignments = vector<int>(assignemnts1);
         srand(time(NULL));
@@ -73,6 +83,12 @@ public:
             {
                 if (rand() % 100 >= 50)
                     assignments[i] = assignments2[i];
+            }
+            break;
+        case MEAN:
+            for (int i = 0; i < assignments2.size(); i++)
+            {
+                assignments[i] = (assignments[i] + assignments2[i]) / 2;
             }
             break;
         case SINGLE:
@@ -99,7 +115,7 @@ public:
         calculateStats();
     }
 
-    double calculateFitness(const vector<int> &accountDemand, const vector<int> &brokerOffer, const vector<vector<int>> &matrix)
+    double calculateFitness()
     {
         fitnessScore = 0;
         for (int i = 0; i < accountDemand.size(); i++)
@@ -119,10 +135,10 @@ public:
         return fitnessScore;
     }
     void applyMutation() {}
-    bool isValid(const vector<int> &acctQty, const vector<int> &brkQty, const vector<vector<int>> &matrix)
+    bool isValid()
     {
-        vector<int> acctTmp = acctQty;
-        vector<int> brkTmp = brkQty;
+        vector<int> acctTmp = accountDemand;
+        vector<int> brkTmp = brokerOffer;
         for (int i = 0; i < numAccounts; i++)
         {
             for (int j = 0; j < numBrokers; j++)
@@ -164,6 +180,10 @@ class PriceAllocator
         vector<Solution *> ciccio;
         return ciccio;
     }
+    static bool betterSolution(Solution *s1, Solution *s2)
+    {
+        return s1->calculateFitness() > s2->calculateFitness();
+    }
 
 public:
     PriceAllocator(int _firstGenSize, crossover_type _crossoverType, int _maxIterations, int _eliteSelectionNum)
@@ -200,12 +220,16 @@ public:
                     ass[i * numBrokers + j] = matrix[i][j] > 0 ? rand() % acctQuantities[i] : 0;
                 }
             }
-            population.push_back(new Solution(ass, numAccounts, numBrokers));
+            population.push_back(new Solution(ass, acctQuantities, brokerQuantities, matrix));
         }
         for (int i = 0; i < population.size(); i++)
         {
-            cout << i << ": " << population[i]->calculateFitness(acctQuantities, brokerQuantities, matrix) << " / "
-                 << maxScore << " - " << population[i]->isValid(acctQuantities, brokerQuantities, matrix) << endl;
+            sort(population.begin(), population.end(), betterSolution);
+            if (population[i]->isValid())
+            {
+                cout << i << ": " << population[i]->calculateFitness() << " / "
+                     << maxScore << " - " << population[i]->isValid() << endl;
+            }
         }
         // loop until target or max iterations
         for (int n = 0; n < maxIterations; n++)
