@@ -18,7 +18,7 @@ class Solution
     vector<double> stats;
     vector<int> assignments;
     int numAccounts, numBrokers;
-    double fitnessScore;
+    double cost;
     bool isValid;
 
     void calculateAccountPrices(const vector<double> &brokerPrices)
@@ -57,7 +57,7 @@ public:
         numBrokers = _nAccounts;
         numAccounts = _nBrokers;
         assignments = sol;
-        fitnessScore = 0;
+        cost = 0;
         //calculateAccountPrices(brokerPrice);
         //calculateStats();
     }
@@ -65,8 +65,8 @@ public:
     {
         numBrokers = parent1->numBrokers;
         numAccounts = parent1->numAccounts;
-        fitnessScore = 0;
-        assignments = vector<int>(parent1->assignments);
+        cost = 0;
+        assignments = parent1->assignments;
         srand(time(NULL));
         switch (cType)
         {
@@ -75,12 +75,14 @@ public:
             {
                 if (rand() % 100 >= 50)
                     assignments[i] = parent2->assignments[i];
+                applyMutation(assignments[i], 2 * assignments[i]);
             }
             break;
         case MEAN:
             for (int i = 0; i < parent2->assignments.size(); i++)
             {
                 assignments[i] = (assignments[i] + parent2->assignments[i]) / 2;
+                applyMutation(assignments[i], 2 * assignments[i]);
             }
             break;
         case SINGLE:
@@ -94,27 +96,31 @@ public:
                 last = tmp;
             }
             for (int i = first; i <= last; i++)
+            {
                 assignments[i] = parent2->assignments[i];
+                applyMutation(assignments[i], 2 * assignments[i]);
+            }
             break;
-        }
-        srand(time(NULL));
-        for (int i = 0; i < parent2->assignments.size(); i++)
-        {
-            if (rand() % 100 >= 50)
-                assignments[i] = parent2->assignments[i];
         }
         //calculateAccountPrices(brokerPrice);
         calculateStats();
     }
     bool getIsValid() { return isValid; }
     void setIsValid(bool valid) { isValid = valid; }
-    double getFitnessScore() { return fitnessScore; }
-    void setFitnessScore(double score) { fitnessScore = score; }
+    double getCost() { return cost; }
+    void setCost(double score) { cost = score; }
     bool operator<(const Solution &s2) const
     {
-        return fitnessScore > s2.fitnessScore;
+        return cost < s2.cost;
     };
-    void applyMutation() {}
+    int applyMutation(int val, int maxVal)
+    {
+        srand(time(NULL));
+        if (rand() % 1000 > 900)
+            return rand() % maxVal;
+        else
+            return val;
+    }
     vector<int> &getAssignments()
     {
         return assignments;
@@ -147,24 +153,18 @@ class PriceAllocator
         vector<Solution *> ciccio;
         return ciccio;
     }
-    double calculateSFitness(Solution *s)
+    double calculateCost(Solution *s)
     {
-        double fitnessScore = 0;
+        double cost = 0;
+        vector<int> acctTmp;
         for (int i = 0; i < numAccounts; i++)
         {
             int totAcct = 0;
             for (int j = 0; j < numBrokers; j++)
-            {
                 totAcct += s->getAssignments()[i * numBrokers + j];
-                if (matrix[i][j] > 0)
-                    fitnessScore += s->getAssignments()[i * numBrokers + j];
-                else
-                    fitnessScore -= s->getAssignments()[i * numBrokers + j];
-            }
-            if (totAcct > acctQuantities[i])
-                fitnessScore -= totAcct - acctQuantities[i];
+            cost += (totAcct - acctQuantities[i]) * (totAcct - acctQuantities[i]);
         }
-        return fitnessScore;
+        return cost / numAccounts; // MSE
     }
     bool calculateIsValid(Solution *s)
     {
@@ -185,6 +185,10 @@ class PriceAllocator
             }
         }
         return true;
+    }
+    static bool compareSolutions(Solution *s1, Solution *s2)
+    {
+        return s1->getCost() < s2->getCost();
     }
 
 public:
@@ -211,17 +215,19 @@ public:
     {
         for (int i = 0; i < population.size(); i++)
         {
-            if (population[i]->getIsValid())
+            //if (population[i]->getIsValid())
             {
-                cout << i << ": " << population[i]->getFitnessScore() << " / "
+                cout << i << ": " << population[i]->getCost() << " / "
                      << maxScore << " - " << population[i]->getIsValid() << endl;
             }
         }
-        cout << "best: " << population[0]->getFitnessScore() << endl;
+        cout << "best: " << population[0]->getCost() << endl;
+        printSolution(population[0]);
+        cout << endl;
     }
     void printSolution(Solution *s)
     {
-        cout << s->getFitnessScore() << ":" << endl;
+        cout << s->getCost() << ":" << endl;
         vector<int> sol = s->getAssignments();
         for (int i = 0; i < numAccounts; i++)
         {
@@ -245,41 +251,42 @@ public:
                 }
             }
             Solution *s = new Solution(ass, numAccounts, numBrokers);
-            s->setFitnessScore(calculateSFitness(s));
+            s->setCost(calculateCost(s));
             s->setIsValid(calculateIsValid(s));
             population.push_back(s);
         }
-        sort(population.begin(), population.end());
-        printGeneration();
+        //printGeneration();
         // loop until target or max iterations
-        for (int n = 0; n < maxIterations; n++)
+        for (int k = 0; k < maxIterations; k++)
         {
-            if (population[0]->getFitnessScore() >= maxScore)
-            {
-                printSolution(population[0]);
-                return;
-            }
-            vector<Solution *> lastGen(population);
+            sort(population.begin(), population.end(), compareSolutions);
+            printGeneration();
+            cout << population.size() << " " << population[0]->getCost() << endl;
+            if (population[0]->getCost() == 0)
+                break;
+
             // remove the worst, keep the best;
+            vector<Solution *> lastGen = population;
+            population.erase(population.begin() + 1, population.end());
             srand(time(NULL));
-            for (int n = 1; n < lastGen.size() * gorwthRate; n++)
+            for (int n = 0; n < lastGen.size() * gorwthRate - 1; n++)
             {
-                int gen1 = 1 + rand() % lastGen.size() - 1;
-                int gen2 = 1 + rand() % lastGen.size() - 1;
+                int gen1 = rand() % (lastGen.size() - 1);
+                int gen2 = rand() % (lastGen.size() - 1);
+                if (gen2 == gen1)
+                    gen2 = (gen1 + 1) % (lastGen.size() - 1);
+                //cout << lastGen.size() << " - combining " << gen1 << " and " << gen2 << endl;
                 Solution *s = new Solution(lastGen[gen1], lastGen[gen2], crossoverType);
-                printSolution(lastGen[gen1]);
-                cout << endl;
-                printSolution(lastGen[gen2]);
-                cout << endl;
-                printSolution(s);
-                cout << endl;
-                s->setFitnessScore(calculateSFitness(s));
+                //Solution *s = new Solution(lastGen[0], lastGen[n % lastGen.size()], crossoverType);
+                s->setCost(calculateCost(s));
                 s->setIsValid(calculateIsValid(s));
                 population.push_back(s);
             }
-            sort(population.begin(), population.end());
-            printGeneration();
+            //printGeneration();
         }
+
+        cout << "best solution: " << endl;
+        printSolution(population[0]);
         //  calc stats for each sol
         //  select elite
         //  new generation
@@ -289,8 +296,7 @@ public:
 
 int main(int argc, char **argv)
 {
-
-    PriceAllocator allocator = PriceAllocator(10, 1, SINGLE, 2);
+    PriceAllocator allocator = PriceAllocator(50000, 1, ONEBYONE, 0);
     vector<int> a{10, 20, 30};
     vector<int> bq{30, 30};
     vector<double> bp{100, 100};
