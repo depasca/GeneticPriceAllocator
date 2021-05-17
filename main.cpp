@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <chrono>
 #include <random>
 
 using namespace std;
@@ -81,8 +82,8 @@ public:
         case MEAN:
             for (int i = 0; i < parent2->assignments.size(); i++)
             {
-                assignments[i] = (assignments[i] + parent2->assignments[i]) / 2;
-                applyMutation(assignments[i], 2 * assignments[i]);
+                assignments[i] = round((assignments[i] + parent2->assignments[i]) / 2.0);
+                //applyMutation(assignments[i], 2 * assignments[i]);
             }
             break;
         case SINGLE:
@@ -259,29 +260,35 @@ public:
         // loop until target or max iterations
         for (int k = 0; k < maxIterations; k++)
         {
+            //printGeneration();
             sort(population.begin(), population.end(), compareSolutions);
-            printGeneration();
-            cout << population.size() << " " << population[0]->getCost() << endl;
+            printSolution(population[0]);
+            cout << endl;
+            //cout << population.size() << " " << population[0]->getCost() << endl;
             if (population[0]->getCost() == 0)
                 break;
 
             // remove the worst, keep the best;
-            vector<Solution *> lastGen = population;
-            population.erase(population.begin() + 1, population.end());
+            vector<Solution *> newGen;
+            newGen.push_back(population[0]);
             srand(time(NULL));
-            for (int n = 0; n < lastGen.size() * gorwthRate - 1; n++)
+            for (int n = 0; n < population.size() * gorwthRate - 1; n++)
             {
-                int gen1 = rand() % (lastGen.size() - 1);
-                int gen2 = rand() % (lastGen.size() - 1);
+                unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+                std::default_random_engine generator(seed);
+                uniform_int_distribution<int> distribution(1, population.size() - 1);
+                int gen1 = distribution(generator);
+                int gen2 = distribution(generator);
                 if (gen2 == gen1)
-                    gen2 = (gen1 + 1) % (lastGen.size() - 1);
-                //cout << lastGen.size() << " - combining " << gen1 << " and " << gen2 << endl;
-                Solution *s = new Solution(lastGen[gen1], lastGen[gen2], crossoverType);
+                    gen2 = (gen1 + 1) % (population.size() - 1);
+                //cout << population.size() << " - combining " << gen1 << " and " << gen2 << endl;
+                Solution *s = new Solution(population[gen1], population[gen2], crossoverType);
                 //Solution *s = new Solution(lastGen[0], lastGen[n % lastGen.size()], crossoverType);
                 s->setCost(calculateCost(s));
                 s->setIsValid(calculateIsValid(s));
-                population.push_back(s);
+                newGen.push_back(s);
             }
+            population = newGen;
             //printGeneration();
         }
 
@@ -296,9 +303,9 @@ public:
 
 int main(int argc, char **argv)
 {
-    PriceAllocator allocator = PriceAllocator(50000, 1, ONEBYONE, 1);
-    vector<int> a{10, 20, 30};
-    vector<int> bq{30, 30};
+    PriceAllocator allocator = PriceAllocator(500, 1.2, MEAN, 100);
+    vector<int> a{1000, 2000, 3000};
+    vector<int> bq{3000, 3000};
     vector<double> bp{100, 100};
     vector<vector<int>> m{{0, 1}, {0, 1}, {1, 1}};
     allocator.setInput(a, bq, bp, m);
