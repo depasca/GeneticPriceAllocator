@@ -76,14 +76,14 @@ public:
             {
                 if (rand() % 100 >= 50)
                     assignments[i] = parent2->assignments[i];
-                applyMutation(assignments[i], 2 * assignments[i]);
+                applyMutation(assignments[i]);
             }
             break;
         case MEAN:
             for (int i = 0; i < parent2->assignments.size(); i++)
             {
                 assignments[i] = round((assignments[i] + parent2->assignments[i]) / 2.0);
-                //applyMutation(assignments[i], 2 * assignments[i]);
+                applyMutation(assignments[i]);
             }
             break;
         case SINGLE:
@@ -99,7 +99,7 @@ public:
             for (int i = first; i <= last; i++)
             {
                 assignments[i] = parent2->assignments[i];
-                applyMutation(assignments[i], 2 * assignments[i]);
+                applyMutation(assignments[i]);
             }
             break;
         }
@@ -114,11 +114,11 @@ public:
     {
         return cost < s2.cost;
     };
-    int applyMutation(int val, int maxVal)
+    int applyMutation(int val)
     {
         srand(time(NULL));
-        if (rand() % 1000 > 900)
-            return rand() % maxVal;
+        if (rand() % 1000 > 500)
+            return rand() % (2 * val);
         else
             return val;
     }
@@ -218,8 +218,7 @@ public:
         {
             //if (population[i]->getIsValid())
             {
-                cout << i << ": " << population[i]->getCost() << " / "
-                     << maxScore << " - " << population[i]->getIsValid() << endl;
+                cout << i << ": " << population[i]->getCost() << " - " << population[i]->getIsValid() << endl;
             }
         }
         cout << "best: " << population[0]->getCost() << endl;
@@ -228,13 +227,12 @@ public:
     }
     void printSolution(Solution *s)
     {
-        cout << s->getCost() << ":" << endl;
         vector<int> sol = s->getAssignments();
         for (int i = 0; i < numAccounts; i++)
         {
             for (int j = 0; j < numBrokers; j++)
                 cout << sol[i * numBrokers + j] << " ";
-            cout << endl;
+            cout << ": " << s->getCost() << endl;
         }
     }
     void run()
@@ -260,9 +258,10 @@ public:
         // loop until target or max iterations
         for (int k = 0; k < maxIterations; k++)
         {
-            //printGeneration();
             sort(population.begin(), population.end(), compareSolutions);
-            printSolution(population[0]);
+            //printGeneration();
+            for (int i = 0; i < population.size(); i++)
+                printSolution(population[i]);
             cout << endl;
             //cout << population.size() << " " << population[0]->getCost() << endl;
             if (population[0]->getCost() == 0)
@@ -303,11 +302,11 @@ public:
 
 int main(int argc, char **argv)
 {
-    PriceAllocator allocator = PriceAllocator(500, 1.2, MEAN, 100);
-    vector<int> a{1000, 2000, 3000};
-    vector<int> bq{3000, 3000};
+    PriceAllocator allocator = PriceAllocator(50, 2, MEAN, 10);
+    vector<int> a{6000};
+    vector<int> bq{6000};
     vector<double> bp{100, 100};
-    vector<vector<int>> m{{0, 1}, {0, 1}, {1, 1}};
+    vector<vector<int>> m{{1}};
     allocator.setInput(a, bq, bp, m);
     allocator.run();
     //read config
