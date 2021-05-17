@@ -296,7 +296,7 @@ public:
 
 int main(int argc, char **argv)
 {
-    PriceAllocator allocator = PriceAllocator(50000, 1, ONEBYONE, 0);
+    PriceAllocator allocator = PriceAllocator(50000, 1, ONEBYONE, 1);
     vector<int> a{10, 20, 30};
     vector<int> bq{30, 30};
     vector<double> bp{100, 100};
