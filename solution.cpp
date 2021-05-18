@@ -95,7 +95,7 @@ int Solution::applyMutation(int val)
 {
     srand(time(NULL));
     if (rand() % 1000 > 500)
-        return rand() % (2 * val);
+        return rand() % (val == 0 ? 2 : 2 * val);
     else
         return val;
 }

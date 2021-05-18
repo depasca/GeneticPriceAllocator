@@ -107,9 +107,9 @@ void PriceAllocator::run()
     {
         sort(population.begin(), population.end(), compareSolutions);
         //printGeneration();
-        for (int i = 0; i < population.size(); i++)
-            printSolution(population[i]);
-        cout << endl;
+        //for (int i = 0; i < population.size(); i++)
+        //    printSolution(population[i]);
+        //cout << endl;
         //cout << population.size() << " " << population[0]->getCost() << endl;
         if (population[0]->getCost() == 0)
             break;

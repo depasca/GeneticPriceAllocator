@@ -1,16 +1,21 @@
+GOOGLE_TEST_LIB = gtest
+
 CPPFLAGS=-g
 
-pa: solution.o priceallocator.o main.o
-	g++ -o pa solution.o priceallocator.o main.o
+pa: solution.o priceallocator.o main.o test.o
+	g++ -o pa solution.o priceallocator.o main.o test.o -l $(GOOGLE_TEST_LIB) -l pthread
 
-solution.o: solution.cpp solution.h
-	g++ -c solution.cpp
+solution.o: solution.cpp
+	g++  -c solution.cpp $(CPPFLAGS)
 
-priceallocator.o: priceallocator.cpp priceallocator.h solution.h
-	g++ -c priceallocator.cpp
+priceallocator.o: priceallocator.cpp
+	g++ -c priceallocator.cpp $(CPPFLAGS)
 
-main.o: main.cpp priceallocator.h solution.h
-	g++ -c main.cpp
+test.o: test.cpp
+	g++ -c test.cpp $(CPPFLAGS)
 
-clean: pa main.o priceallocator.o solution.o
-	rm -f pa main.o priceallocator.o solution.o
+main.o: main.cpp
+	g++ -c main.cpp $(CPPFLAGS)
+
+clean: pa main.o test.o priceallocator.o solution.o
+	rm -f pa main.o priceallocator.o solution.o test.o
